@@ -9,7 +9,7 @@ import { RateLimiterMemory } from 'rate-limiter-flexible';
 import { logger } from '@/utils/logger';
 import { cache } from '@/utils/cache';
 import { ollamaService } from '@/services/ollama';
-import { embeddingService } from '@/services/embedding';
+import { embeddingService, EmbeddingProvider } from '@/services/embedding';
 import { WordAnalysis, SearchQuery, SemanticSearchResult } from '@/types';
 
 dotenv.config();
@@ -103,6 +103,48 @@ app.get('/health', async (req, res) => {
   }
 });
 
+// Embedding provider management endpoints
+app.get('/api/providers', async (req, res) => {
+  try {
+    const providersInfo = await embeddingService.getProviderInfo();
+    res.json({
+      success: true,
+      data: providersInfo
+    });
+  } catch (error) {
+    logger.error('Error getting provider info:', error);
+    res.status(500).json({
+      error: 'Failed to get provider information'
+    });
+  }
+});
+
+app.post('/api/providers/word2vec/load', async (req, res) => {
+  try {
+    const { modelPath } = req.body;
+    
+    if (!modelPath || typeof modelPath !== 'string') {
+      return res.status(400).json({
+        error: 'Invalid input',
+        message: 'Model path is required and must be a string'
+      });
+    }
+
+    await embeddingService.loadWord2VecModel(modelPath);
+    
+    res.json({
+      success: true,
+      message: 'Word2Vec model loaded successfully'
+    });
+  } catch (error) {
+    logger.error('Error loading Word2Vec model:', error);
+    res.status(500).json({
+      error: 'Failed to load Word2Vec model',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // API Routes
 
 // Comprehensive word analysis
@@ -165,7 +207,7 @@ app.post('/api/analyze', async (req, res) => {
 // Semantic search
 app.post('/api/search/semantic', async (req, res) => {
   try {
-    const { query, limit = 10, threshold = 0.7 } = req.body;
+    const { query, limit = 10, threshold = 0.7, provider = 'ollama', model } = req.body;
     
     if (!query || typeof query !== 'string') {
       return res.status(400).json({
@@ -174,7 +216,17 @@ app.post('/api/search/semantic', async (req, res) => {
       });
     }
 
-    const results = await embeddingService.findSimilarWords(query, limit, threshold);
+    const embeddingOptions = { provider: provider as EmbeddingProvider, model };
+    
+    // Check if provider is available
+    if (!embeddingService.isProviderAvailable(embeddingOptions.provider)) {
+      return res.status(400).json({
+        error: 'Provider unavailable',
+        message: `Embedding provider '${provider}' is not available. Please check configuration.`
+      });
+    }
+
+    const results = await embeddingService.findSimilarWords(query, limit, threshold, embeddingOptions);
     
     res.json({
       success: true,
@@ -183,6 +235,8 @@ app.post('/api/search/semantic', async (req, res) => {
         query,
         resultsCount: results.length,
         threshold,
+        provider: embeddingOptions.provider,
+        model: embeddingOptions.model,
         cached: false
       }
     });

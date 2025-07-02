@@ -1,8 +1,16 @@
 import { PrismaClient } from '@prisma/client';
 import { ollamaService } from './ollama';
+import { word2vecService } from './word2vec';
 import { SemanticSearchResult, EmbeddingResult } from '@/types';
 import { logger } from '@/utils/logger';
 import { cache } from '@/utils/cache';
+
+export type EmbeddingProvider = 'ollama' | 'word2vec';
+
+export interface EmbeddingOptions {
+  provider: EmbeddingProvider;
+  model?: string;
+}
 
 class EmbeddingService {
   private prisma: PrismaClient;
@@ -15,9 +23,13 @@ class EmbeddingService {
     this.maxResults = 20;
   }
 
-  async generateAndStoreEmbedding(wordId: number, text: string, model?: string): Promise<void> {
+  async generateAndStoreEmbedding(
+    wordId: number, 
+    text: string, 
+    options: EmbeddingOptions = { provider: 'ollama' }
+  ): Promise<void> {
     try {
-      const embeddingResult = await ollamaService.generateEmbedding(text);
+      const embeddingResult = await this.generateEmbedding(text, options);
       
       await this.prisma.wordEmbedding.upsert({
         where: {
@@ -45,12 +57,29 @@ class EmbeddingService {
     }
   }
 
+  private async generateEmbedding(text: string, options: EmbeddingOptions): Promise<EmbeddingResult> {
+    switch (options.provider) {
+      case 'ollama':
+        return await ollamaService.generateEmbedding(text, options.model);
+      
+      case 'word2vec':
+        if (!word2vecService.isLoaded()) {
+          throw new Error('Word2Vec model not loaded. Please load a model first.');
+        }
+        return await word2vecService.generateEmbedding(text);
+      
+      default:
+        throw new Error(`Unsupported embedding provider: ${options.provider}`);
+    }
+  }
+
   async findSimilarWords(
     queryText: string, 
     limit: number = 10, 
-    threshold: number = 0.7
+    threshold: number = 0.7,
+    options: EmbeddingOptions = { provider: 'ollama' }
   ): Promise<SemanticSearchResult[]> {
-    const cacheKey = `semantic_search:${queryText}:${limit}:${threshold}`;
+    const cacheKey = `semantic_search:${queryText}:${limit}:${threshold}:${options.provider}:${options.model || 'default'}`;
     const cached = cache.get<SemanticSearchResult[]>(cacheKey);
     
     if (cached) {
@@ -60,7 +89,7 @@ class EmbeddingService {
 
     try {
       // Generate embedding for the query
-      const queryEmbedding = await ollamaService.generateEmbedding(queryText);
+      const queryEmbedding = await this.generateEmbedding(queryText, options);
       
       // Find similar embeddings using cosine similarity
       const similarWords = await this.findSimilarEmbeddings(
@@ -270,10 +299,11 @@ class EmbeddingService {
 
   async findSemanticallySimilarCachedQueries(
     query: string,
-    threshold: number = 0.9
+    threshold: number = 0.9,
+    options: EmbeddingOptions = { provider: 'ollama' }
   ): Promise<string[]> {
     try {
-      const queryEmbedding = await ollamaService.generateEmbedding(query);
+      const queryEmbedding = await this.generateEmbedding(query, options);
       
       // This would require storing embeddings for cached queries
       // For now, return empty array - can be implemented if needed
@@ -283,6 +313,44 @@ class EmbeddingService {
       logger.error('Error finding semantically similar cached queries:', error);
       return [];
     }
+  }
+
+  async loadWord2VecModel(modelPath: string): Promise<void> {
+    try {
+      await word2vecService.loadPretrainedModel(modelPath);
+      logger.info('Word2Vec model loaded successfully');
+    } catch (error) {
+      logger.error('Failed to load Word2Vec model:', error);
+      throw error;
+    }
+  }
+
+  getAvailableProviders(): EmbeddingProvider[] {
+    return ['ollama', 'word2vec'];
+  }
+
+  isProviderAvailable(provider: EmbeddingProvider): boolean {
+    switch (provider) {
+      case 'ollama':
+        return true; // Ollama service is always available if configured
+      case 'word2vec':
+        return word2vecService.isLoaded();
+      default:
+        return false;
+    }
+  }
+
+  async getProviderInfo(): Promise<Record<EmbeddingProvider, { available: boolean; models?: string[] }>> {
+    return {
+      ollama: {
+        available: true,
+        models: ['nomic-embed-text', 'qwen2.5'] // Could be dynamic from ollama service
+      },
+      word2vec: {
+        available: word2vecService.isLoaded(),
+        models: word2vecService.isLoaded() ? ['word2vec'] : []
+      }
+    };
   }
 
   async cleanup(): Promise<void> {

@@ -6,11 +6,15 @@ import { Brain, Search, ArrowRight, Zap } from 'lucide-react';
 import { useThesaurus } from '../hooks/useThesaurus';
 import { SemanticSearchResult } from '../types';
 import { LoadingSpinner } from './LoadingSpinner';
+import { EmbeddingProviderSelector, EmbeddingSettings } from './EmbeddingProviderSelector';
 
 export function SemanticSearch() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SemanticSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [embeddingSettings, setEmbeddingSettings] = useState<EmbeddingSettings>({
+    provider: 'ollama'
+  });
   const { searchSemantic } = useThesaurus();
 
   const handleSearch = async (searchQuery: string) => {
@@ -18,7 +22,13 @@ export function SemanticSearch() {
 
     setIsSearching(true);
     try {
-      const searchResults = await searchSemantic(searchQuery, 15, 0.6);
+      const searchResults = await searchSemantic(
+        searchQuery, 
+        15, 
+        0.6, 
+        embeddingSettings.provider,
+        embeddingSettings.model
+      );
       setResults(searchResults);
     } catch (error) {
       console.error('Semantic search failed:', error);
@@ -50,6 +60,12 @@ export function SemanticSearch() {
 
   return (
     <div className="space-y-6">
+      {/* Embedding Provider Selector */}
+      <EmbeddingProviderSelector
+        settings={embeddingSettings}
+        onSettingsChange={setEmbeddingSettings}
+      />
+
       {/* Search Form */}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="relative">

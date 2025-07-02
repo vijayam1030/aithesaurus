@@ -14,7 +14,16 @@
       "Bash(pkill:*)",
       "Bash(true)",
       "Bash(ls:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(npm install:*)",
+      "Bash(ss:*)",
+      "Bash(kill:*)",
+      "Bash(PORT=3005 npm run dev)",
+      "Bash(npx next dev:*)",
+      "Bash(chmod:*)",
+      "Bash(./start-servers.sh:*)",
+      "Bash(./start-simple.sh:*)",
+      "Bash(rg:*)"
     ],
     "deny": []
   }

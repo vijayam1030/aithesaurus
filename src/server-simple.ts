@@ -281,6 +281,100 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
   });
 });
 
+// Embedding provider management endpoints
+app.get('/api/providers', async (req, res) => {
+  try {
+    // Simple mock response for providers since we don't have the full embedding service
+    const providersInfo = {
+      ollama: {
+        available: true,
+        models: ['nomic-embed-text', 'qwen2.5', 'tinyllama:1.1b']
+      },
+      word2vec: {
+        available: false,
+        models: []
+      }
+    };
+    
+    res.json({
+      success: true,
+      data: providersInfo
+    });
+  } catch (error) {
+    logger.error('Error getting provider info:', error);
+    res.status(500).json({
+      error: 'Failed to get provider information'
+    });
+  }
+});
+
+app.post('/api/providers/word2vec/load', async (req, res) => {
+  try {
+    const { modelPath } = req.body;
+    
+    if (!modelPath || typeof modelPath !== 'string') {
+      return res.status(400).json({
+        error: 'Invalid input',
+        message: 'Model path is required and must be a string'
+      });
+    }
+
+    // Mock response - in the simplified version, we don't actually load Word2Vec
+    res.status(501).json({
+      error: 'Not implemented in simplified version',
+      message: 'Word2Vec loading is available in the full server version'
+    });
+  } catch (error) {
+    logger.error('Error loading Word2Vec model:', error);
+    res.status(500).json({
+      error: 'Failed to load Word2Vec model',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Simple semantic search endpoint (mock implementation)
+app.post('/api/search/semantic', async (req, res) => {
+  try {
+    const { query, limit = 10, threshold = 0.7, provider = 'ollama', model } = req.body;
+    
+    if (!query || typeof query !== 'string') {
+      return res.status(400).json({
+        error: 'Invalid input',
+        message: 'Query is required and must be a string'
+      });
+    }
+
+    // Simple mock response for semantic search
+    const mockResults = [
+      { word: "similar", similarity: 0.85, definition: "Having resemblance in qualities" },
+      { word: "related", similarity: 0.78, definition: "Connected or associated" },
+      { word: "comparable", similarity: 0.72, definition: "Able to be compared" }
+    ];
+    
+    res.json({
+      success: true,
+      data: mockResults.slice(0, limit),
+      metadata: {
+        query,
+        resultsCount: Math.min(mockResults.length, limit),
+        threshold,
+        provider,
+        model,
+        cached: false,
+        note: "Simplified version - mock results"
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error in semantic search:', error);
+    res.status(500).json({
+      error: 'Search failed',
+      message: 'Failed to perform semantic search. Please try again.'
+    });
+  }
+});
+
 // 404 handler
 app.use('*', (req, res) => {
   res.status(404).json({

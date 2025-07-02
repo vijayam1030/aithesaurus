@@ -87,13 +87,15 @@ export function useThesaurus() {
   const semanticSearchMutation = useMutation<
     ApiResponse<SemanticSearchResult[]>,
     Error,
-    { query: string; limit?: number; threshold?: number }
+    { query: string; limit?: number; threshold?: number; provider?: string; model?: string }
   >(
-    async ({ query, limit = 10, threshold = 0.7 }) => {
+    async ({ query, limit = 10, threshold = 0.7, provider = 'ollama', model }) => {
       const response = await api.post('/api/search/semantic', {
         query,
         limit,
         threshold,
+        provider,
+        model,
       });
       return response.data;
     },
@@ -269,7 +271,7 @@ export function useThesaurus() {
   );
 
   const searchSemantic = useCallback(
-    async (query: string, limit?: number, threshold?: number) => {
+    async (query: string, limit?: number, threshold?: number, provider?: string, model?: string) => {
       setIsLoading(true);
       setError(null);
       
@@ -278,6 +280,8 @@ export function useThesaurus() {
           query,
           limit,
           threshold,
+          provider,
+          model,
         });
         return result.data;
       } finally {
