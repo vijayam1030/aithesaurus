@@ -34,14 +34,22 @@ export default function HomePage() {
       return;
     }
 
+    // Clear previous results immediately when starting new analysis
+    setAnalysisResult(null);
+    setSearchQuery(word.trim());
+
     try {
       const result = await analyzeWord(word.trim(), context);
       setAnalysisResult(result);
-      setSearchQuery(word.trim());
       
       toast.success(`Analysis complete for "${word}"`);
-    } catch (err) {
-      toast.error('Failed to analyze word. Please try again.');
+    } catch (err: any) {
+      console.error('Analysis error:', err);
+      if (err.message?.includes('timeout') || err.code === 'ECONNABORTED') {
+        toast.error('Analysis timed out. The model may still be processing - try the same word again in a few moments.');
+      } else {
+        toast.error('Failed to analyze word. Check console for details and try again.');
+      }
     }
   }, [analyzeWord]);
 
@@ -193,6 +201,19 @@ export default function HomePage() {
                         />
                       </div>
                     </div>
+
+                    {isLoading && (
+                      <div className="card">
+                        <div className="card-body">
+                          <div className="flex items-center justify-center py-8">
+                            <div className="flex items-center space-x-3">
+                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
+                              <span className="text-gray-600">Analyzing word...</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {analysisResult && !isLoading && (
                       <WordAnalysis result={analysisResult} />

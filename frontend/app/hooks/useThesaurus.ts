@@ -17,7 +17,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 120000, // 2 minutes for Ollama model responses
+  timeout: 180000, // 3 minutes for Ollama model responses (increased)
   headers: {
     'Content-Type': 'application/json',
   },
@@ -62,17 +62,20 @@ export function useThesaurus() {
     { word: string; context?: string; includeEmbeddings?: boolean }
   >(
     async ({ word, context, includeEmbeddings = false }) => {
+      console.log(`Starting analysis for "${word}" with timeout: ${api.defaults.timeout}ms`);
       const response = await api.post('/api/analyze', {
         word,
         context,
         includeEmbeddings,
       });
+      console.log(`Analysis completed for "${word}"`);
       return response.data;
     },
     {
-      onSuccess: (data) => {
-        // Cache the result
-        queryClient.setQueryData(['word-analysis', data.data.word], data.data);
+      onSuccess: (data, variables) => {
+        // Cache the result with more specific key including context
+        const cacheKey = ['word-analysis', variables.word, variables.context || 'default'];
+        queryClient.setQueryData(cacheKey, data.data);
       },
       onError: (error: any) => {
         setError(error.response?.data?.message || 'Failed to analyze word');
@@ -227,6 +230,37 @@ export function useThesaurus() {
           includeEmbeddings: true,
         });
         return result.data;
+      } catch (error: any) {
+        // If timeout or network error, try polling for the result
+        console.log('Request failed, checking for cached result...', error.code, error.message);
+        
+        // Poll for the result every 5 seconds for up to 1 minute
+        for (let i = 0; i < 12; i++) {
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          
+          try {
+            // Create a quick request with 10 second timeout to check cache
+            const quickApi = axios.create({
+              baseURL: API_BASE_URL,
+              timeout: 10000, // 10 second timeout for cache checks
+            });
+            
+            const pollResponse = await quickApi.post('/api/analyze', {
+              word,
+              context,
+              includeEmbeddings: true,
+            });
+            
+            if (pollResponse.data?.success && pollResponse.data?.data) {
+              return pollResponse.data.data;
+            }
+          } catch (pollError) {
+            // Continue polling
+            console.log(`Polling attempt ${i + 1}/12 failed, continuing...`);
+          }
+        }
+        
+        throw error;
       } finally {
         setIsLoading(false);
       }
