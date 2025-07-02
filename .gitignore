@@ -64,6 +64,8 @@ jspm_packages/
 
 # dotenv environment variable files
 .env
+.env.*
+!.env.example
 .env.development.local
 .env.test.local
 .env.production.local
@@ -116,10 +118,12 @@ prisma/migrations/
 # Logs
 logs
 *.log
-backend-simple.log
-frontend-clean.log
-frontend-restart.log
-frontend-clean-restart.log
+backend*.log
+frontend*.log
+restart*.log
+*-fast.log
+*-phi3.log
+*-clean*.log
 *.log.*
 
 # OS generated files
@@ -180,6 +184,9 @@ models/
 # Generated documentation
 docs/build/
 docs/dist/
+DOCUMENTATION.html
+*.pdf
+*.docx
 
 # Test coverage
 coverage.xml
