@@ -216,7 +216,7 @@ export default function HomePage() {
                     )}
 
                     {analysisResult && !isLoading && (
-                      <WordAnalysis result={analysisResult} />
+                      <WordAnalysis result={analysisResult} onWordClick={handleAnalyze} />
                     )}
                   </div>
                 )}

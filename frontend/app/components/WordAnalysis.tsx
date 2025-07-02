@@ -7,9 +7,10 @@ import { WordAnalysisResult, RelatedWord, ContextualMeaning } from '../types';
 
 interface WordAnalysisProps {
   result: WordAnalysisResult;
+  onWordClick?: (word: string) => void;
 }
 
-export function WordAnalysis({ result }: WordAnalysisProps) {
+export function WordAnalysis({ result, onWordClick }: WordAnalysisProps) {
   const { word, definition, partOfSpeech, synonyms, antonyms, contexts, confidence } = result;
 
   const getConfidenceColor = (score: number) => {
@@ -79,7 +80,7 @@ export function WordAnalysis({ result }: WordAnalysisProps) {
             {synonyms.length > 0 ? (
               <div className="space-y-2">
                 {synonyms.map((synonym, index) => (
-                  <RelatedWordItem key={index} word={synonym} type="synonym" />
+                  <RelatedWordItem key={index} word={synonym} type="synonym" onWordClick={onWordClick} />
                 ))}
               </div>
             ) : (
@@ -103,7 +104,7 @@ export function WordAnalysis({ result }: WordAnalysisProps) {
             {antonyms.length > 0 ? (
               <div className="space-y-2">
                 {antonyms.map((antonym, index) => (
-                  <RelatedWordItem key={index} word={antonym} type="antonym" />
+                  <RelatedWordItem key={index} word={antonym} type="antonym" onWordClick={onWordClick} />
                 ))}
               </div>
             ) : (
@@ -141,9 +142,10 @@ export function WordAnalysis({ result }: WordAnalysisProps) {
 interface RelatedWordItemProps {
   word: RelatedWord;
   type: 'synonym' | 'antonym';
+  onWordClick?: (word: string) => void;
 }
 
-function RelatedWordItem({ word, type }: RelatedWordItemProps) {
+function RelatedWordItem({ word, type, onWordClick }: RelatedWordItemProps) {
   const getConfidenceColor = (score: number) => {
     if (score >= 0.8) return 'bg-green-100 text-green-800';
     if (score >= 0.6) return 'bg-yellow-100 text-yellow-800';
@@ -157,9 +159,13 @@ function RelatedWordItem({ word, type }: RelatedWordItemProps) {
       className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
     >
       <div className="flex items-center space-x-2">
-        <span className="font-medium text-gray-900 group-hover:text-primary-600 transition-colors">
+        <button
+          onClick={() => onWordClick?.(word.word)}
+          className="font-medium text-gray-900 group-hover:text-primary-600 transition-colors hover:underline cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1 rounded"
+          title={`Analyze "${word.word}"`}
+        >
           {word.word}
-        </span>
+        </button>
         {word.context && (
           <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded">
             {word.context}
