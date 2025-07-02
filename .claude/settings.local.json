@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ollama pull:*)",
+      "Bash(npm install)",
+      "Bash(cp:*)",
+      "Bash(pgrep:*)",
+      "Bash(ollama list:*)",
+      "Bash(npm run dev:simple:*)",
+      "Bash(npm run:*)",
+      "Bash(curl:*)",
+      "Bash(grep:*)",
+      "Bash(rm:*)",
+      "Bash(pkill:*)",
+      "Bash(true)"
+    ],
+    "deny": []
+  }
+}

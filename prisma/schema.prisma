@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Word {
+  id          Int      @id @default(autoincrement())
+  word        String   @unique
+  definition  String?
+  partOfSpeech String?
+  frequency   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  synonyms    WordRelation[] @relation("WordSynonyms")
+  antonyms    WordRelation[] @relation("WordAntonyms")
+  embeddings  WordEmbedding[]
+  contexts    WordContext[]
+  
+  @@map("words")
+}
+
+model WordRelation {
+  id        Int                @id @default(autoincrement())
+  wordId    Int
+  relatedId Int
+  type      WordRelationType
+  confidence Float             @default(0.0)
+  context   String?
+  createdAt DateTime          @default(now())
+
+  word      Word @relation("WordSynonyms", fields: [wordId], references: [id], onDelete: Cascade)
+  related   Word @relation("WordAntonyms", fields: [relatedId], references: [id], onDelete: Cascade)
+
+  @@unique([wordId, relatedId, type])
+  @@map("word_relations")
+}
+
+model WordEmbedding {
+  id        Int      @id @default(autoincrement())
+  wordId    Int
+  model     String   // e.g., "nomic-embed-text", "qwen2.5"
+  embedding Float[]  // Vector embedding
+  dimension Int      // Embedding dimension
+  createdAt DateTime @default(now())
+
+  word Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  @@unique([wordId, model])
+  @@map("word_embeddings")
+}
+
+model WordContext {
+  id          Int      @id @default(autoincrement())
+  wordId      Int
+  context     String   // Sentence or context where word is used
+  meaning     String   // Contextual meaning
+  domain      String?  // Domain-specific usage (medical, legal, etc.)
+  sentiment   Float?   // Sentiment score (-1 to 1)
+  confidence  Float    @default(0.0)
+  createdAt   DateTime @default(now())
+
+  word Word @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  @@map("word_contexts")
+}
+
+model SearchCache {
+  id        Int      @id @default(autoincrement())
+  query     String   @unique
+  results   Json     // Cached search results
+  ttl       DateTime // Time to live
+  createdAt DateTime @default(now())
+
+  @@map("search_cache")
+}
+
+enum WordRelationType {
+  SYNONYM
+  ANTONYM
+  RELATED
+  HYPERNYM
+  HYPONYM
+}
